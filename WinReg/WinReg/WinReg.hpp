@@ -202,12 +202,19 @@ public:
     // Registry Value Setters
     // 
 
+	void SetDwordValue(const std::string& valueName, DWORD data);
     void SetDwordValue(const std::wstring& valueName, DWORD data);
+	void SetQwordValue(const std::string& valueName, const ULONGLONG& data);
     void SetQwordValue(const std::wstring& valueName, const ULONGLONG& data);
+	void SetStringValue(const std::string& valueName, const std::string& data);
     void SetStringValue(const std::wstring& valueName, const std::wstring& data);
+	void SetExpandStringValue(const std::string& valueName, const std::string& data);
     void SetExpandStringValue(const std::wstring& valueName, const std::wstring& data);
+	void SetMultiStringValue(const std::string& valueName, const std::vector<std::string>& data);
     void SetMultiStringValue(const std::wstring& valueName, const std::vector<std::wstring>& data);
+	void SetBinaryValue(const std::string& valueName, const std::vector<BYTE>& data);
     void SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data);
+	void SetBinaryValue(const std::string& valueName, const void* data, DWORD dataSize);
     void SetBinaryValue(const std::wstring& valueName, const void* data, DWORD dataSize);
 
 
@@ -217,6 +224,7 @@ public:
 
     DWORD GetDwordValue(const std::wstring& valueName);
     ULONGLONG GetQwordValue(const std::wstring& valueName);
+	std::string GetStringValue(const std::string& valueName);
     std::wstring GetStringValue(const std::wstring& valueName);
     
     enum class ExpandStringOption
@@ -279,6 +287,56 @@ public:
 private:
     // The wrapped registry key handle
     HKEY m_hKey{ nullptr };
+
+
+	std::wstring StringUtf8ToWideChar(const std::string& strUtf8)
+	{
+		std::wstring ret;
+		if (!strUtf8.empty())
+		{
+			int nNum = MultiByteToWideChar(CP_UTF8, 0, strUtf8.c_str(), -1, nullptr, 0);
+			if (nNum)
+			{
+				WCHAR* wideCharString = new WCHAR[nNum + 1];
+				wideCharString[0] = 0;
+
+				nNum = MultiByteToWideChar(CP_UTF8, 0, strUtf8.c_str(), -1, wideCharString, nNum + 1);
+
+				ret = wideCharString;
+				delete[] wideCharString;
+			}
+			else
+			{
+				//CCLOG("Wrong convert to WideChar code:0x%x", GetLastError());
+			}
+		}
+		return ret;
+	}
+
+	std::string StringWideCharToUtf8(const std::wstring& strWideChar)
+	{
+		std::string ret;
+		if (!strWideChar.empty())
+		{
+			int nNum = WideCharToMultiByte(CP_UTF8, 0, strWideChar.c_str(), -1, nullptr, 0, nullptr, FALSE);
+			if (nNum)
+			{
+				char* utf8String = new char[nNum + 1];
+				utf8String[0] = 0;
+
+				nNum = WideCharToMultiByte(CP_UTF8, 0, strWideChar.c_str(), -1, utf8String, nNum + 1, nullptr, FALSE);
+
+				ret = utf8String;
+				delete[] utf8String;
+			}
+			else
+			{
+				//CCLOG("Wrong convert to Utf8 code:0x%x", GetLastError());
+			}
+		}
+
+		return ret;
+	}
 };
 
 
@@ -309,7 +367,6 @@ private:
     // Error code, as returned by Windows registry APIs
     LONG m_errorCode;
 };
-
 
 //------------------------------------------------------------------------------
 //          Overloads of relational comparison operators for RegKey
@@ -571,6 +628,10 @@ inline void RegKey::Open(
     m_hKey = hKey;
 }
 
+inline void RegKey::SetDwordValue(const std::string& valueName, const DWORD data)
+{
+	SetDwordValue(StringUtf8ToWideChar(valueName), data);
+}
 
 inline void RegKey::SetDwordValue(const std::wstring& valueName, const DWORD data)
 {
@@ -590,6 +651,10 @@ inline void RegKey::SetDwordValue(const std::wstring& valueName, const DWORD dat
     }
 }
 
+inline void RegKey::SetQwordValue(const std::string& valueName, const ULONGLONG& data)
+{
+	SetQwordValue(StringUtf8ToWideChar(valueName), data);
+}
 
 inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG& data)
 {
@@ -609,6 +674,10 @@ inline void RegKey::SetQwordValue(const std::wstring& valueName, const ULONGLONG
     }
 }
 
+inline void RegKey::SetStringValue(const std::string& valueName, const std::string& data)
+{
+	SetStringValue(StringUtf8ToWideChar(valueName), StringUtf8ToWideChar(data));
+}
 
 inline void RegKey::SetStringValue(const std::wstring& valueName, const std::wstring& data)
 {
@@ -631,6 +700,10 @@ inline void RegKey::SetStringValue(const std::wstring& valueName, const std::wst
     }
 }
 
+inline void RegKey::SetExpandStringValue(const std::string& valueName, const std::string& data)
+{
+	SetExpandStringValue(StringUtf8ToWideChar(valueName), StringUtf8ToWideChar(data));
+}
 
 inline void RegKey::SetExpandStringValue(const std::wstring& valueName, const std::wstring& data)
 {
@@ -699,6 +772,13 @@ inline std::vector<wchar_t> BuildMultiString(const std::vector<std::wstring>& da
 
 } // namespace details
 
+inline void RegKey::SetMultiStringValue(
+	const std::string& valueName,
+	const std::vector<std::string>& data
+)
+{
+
+}
 
 inline void RegKey::SetMultiStringValue(
     const std::wstring& valueName, 
@@ -727,6 +807,10 @@ inline void RegKey::SetMultiStringValue(
     }
 }
 
+inline void RegKey::SetBinaryValue(const std::string& valueName, const std::vector<BYTE>& data)
+{
+	SetBinaryValue(StringUtf8ToWideChar(valueName), data);
+}
 
 inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vector<BYTE>& data)
 {
@@ -749,6 +833,14 @@ inline void RegKey::SetBinaryValue(const std::wstring& valueName, const std::vec
     }
 }
 
+inline void RegKey::SetBinaryValue(
+	const std::string& valueName,
+	const void* const data,
+	const DWORD dataSize
+)
+{
+	SetBinaryValue(StringUtf8ToWideChar(valueName), data, dataSize);
+}
 
 inline void RegKey::SetBinaryValue(
     const std::wstring& valueName, 
@@ -824,6 +916,10 @@ inline ULONGLONG RegKey::GetQwordValue(const std::wstring& valueName)
     return data;
 }
 
+inline std::string RegKey::GetStringValue(const std::string& valueName)
+{
+	return StringWideCharToUtf8(GetStringValue(StringUtf8ToWideChar(valueName)));
+}
 
 inline std::wstring RegKey::GetStringValue(const std::wstring& valueName)
 {
